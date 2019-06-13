@@ -2,7 +2,7 @@
 """
 Created on Sat Jun  8 19:19:43 2019
 
-@author: dagoe
+@author: darius goergen
 """
 # This script applies both savitzkiy-golay filtering of MODIS NDVI time series
 
