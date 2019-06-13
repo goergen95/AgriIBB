@@ -3,6 +3,7 @@ library(rgdal)
 library(carte)
 library(doParallel)
 library(CAST)
+library(splitstackshape)
 # specifiy number of cores for parallell processing
 cores = 7
 
@@ -10,27 +11,16 @@ cores = 7
 points = readOGR("../results/shapes/random_points.shp")
 predNames = readRDS("../results/prediction/predNames.rds")
 
-# randomly sample 50 percent of points for training and validation
+# stratified random sample 50 percent of points for training and validation
+# based on region and activity status
 # set seed is used to ensure reproducibility
-N0 = length(points@data$active[points@data$active==0]) # number of inactive pixels
-N1 = length(points@data$active[points@data$active==1]) # number of active pixels
 set.seed(834289348)
-smp0 = sample(N0,0.5*N0) # randomly select 50 percent of inactive pixels
-set.seed(082345907234)
-smp1 = sample(N1,0.5*N1) # randomly select 50 percent of active pixels
+training = as.data.frame(stratified(points@data,c("region","active"),0.5))
+testing = points@data[-training$id,]
 
-# spliting the data in training and testing
-training0 = points@data[which(points@data$active==0),][smp0,2:ncol(points@data)]
-testing0 = points@data[which(points@data$active==0),][-smp0,2:ncol(points@data)]
-training1 = points@data[which(points@data$active==1),][smp1,2:ncol(points@data)]
-testing1= points@data[which(points@data$active==1),][-smp1,2:ncol(points@data)]
-
-training = rbind(training0,training1)
-testing = rbind(testing0,testing1)
-
-# using the CAST package to achieve space-dependend folds for the cross-validation
-index = CAST::CreateSpacetimeFolds(training,spacevar = "region",k=10,seed=320543)
-tc = caret::trainControl(method="cv",number=10,classProbs = TRUE, index=index$index,indexOut=index$indexOut)
+# using the CAST package to achieve space-dependend folds for the cross-validation (leave-area-out)
+index = CAST::CreateSpacetimeFolds(training,spacevar = "region",k=length(unique(training$region)),seed=320543)#
+tc = caret::trainControl(method="cv",number=length(unique(training$region)),classProbs = TRUE, index=index$index,indexOut=index$indexOut)
 
 # ensure random forest is done as classification
 training$active = make.names(training$active)

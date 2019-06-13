@@ -39,25 +39,24 @@ saveRDS(predNames,file="../results/prediction/predNames.rds")
 # sample points to raster
 r = raster("../results/savG/layered/savG_2003001.tif")
 r[] = NA
-refRas = rasterize(randomPoints,r,randomPoints$id)
+refRas = rasterize(randomPoints,r,randomPoints$id, na.rm=F)
 writeRaster(refRas, "../results/prediction/refRas.tif", overwrite = TRUE)
 
 # fields to raster (implemented with parallel processing)
 fields$rasVal = 1
 beginCluster(cores)
 agrMask = clusterR(r,fun=raster::rasterize,args=list(x=fields,field=fields$rasVal))
-#agrMask = rasterize(fields,r,fields$rasVal)
 endCluster()
-writeRaster(agrMask,filename="../results/prediction/agrMask.tif")
+writeRaster(agrMask,filename="../results/prediction/agrMask.tif", overwrite=TRUE)
 
 
-# extract predictor variables for each pixel ID in refRas
+# extract predictor variables for each pixel ID in refRas and write to shapefile
 names(predStack) = predNames
-data = extract(predStack,randomPoints, cellnumbers=TRUE,df=TRUE)
-randomPoints@data[,4:32] = data2[,3:31]
-
-for (i in 1:length(predNames)){
-  randomPoints@data[,predNames[i]] = data[,i+2]
+data = predStack[refRas]
+ids = as.vector(na.omit(values(refRas)))
+for(i in 1:length(ids)){
+randomPoints@data[randomPoints$id==ids[i],predNames] = data[i,predNames]
 }
 
+# save file to disk
 writeOGR(randomPoints,dsn="../results/shapes/random_points.shp",overwrite_layer=TRUE,driver="ESRI Shapefile",layer="random_points")
