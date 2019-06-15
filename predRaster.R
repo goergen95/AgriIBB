@@ -27,7 +27,7 @@ for (year in years){
   print("Starting to mask out non-agricultural pixels...")
   predRas[is.na(agrMask)] = NA
   print("Writing file to disk...")
-  writeRaster(predRas, filename=paste0("../results/prediction/activitiy_",year,".tif"))
+  writeRaster(predRas, filename=paste0("../results/prediction/activitiy_",year,".tif"),overwrite=TRUE)
   print(paste0("Done with prediction for year ",year,"..."))
 }
 endCluster()

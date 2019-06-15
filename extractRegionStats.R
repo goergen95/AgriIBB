@@ -1,6 +1,5 @@
 # script to extract yearly agricultural information on region level
 # 1 MODIS pixel is apprx. 250 x 250 m = 62.500m, so 6.25 acres per pixel
-
 library(raster)
 library(rgdal)
 library(rgeos)
@@ -18,7 +17,17 @@ years = 2003:2016
 content = gContains(regions,fields,byid=TRUE)
 indexEmpty = as.vector(which(colSums(content)==0))
 namesEmpty = regionNames[indexEmpty]
-
+if (file.exists("../results/prediction/regionRas.tif")){
+  print("Using existing region raster. Make sure to delete regionRas.tif for new calculation.")
+  regionRas = raster("../results/prediction/regionRas.tif")
+}else{
+r = raster(predfiles[1])
+r[] = NA
+regions$ID = 1:length(regions)
+regionRas = rasterize(regions,r, regions$ID)
+writeRaster(regionRas,filename="../results/prediction/regionRas.tif", overwrite=T)
+writeOGR(regions,dsn="../results/shapes/regions.shp",driver="ESRI Shapefile",layer="regions",overwrite_layer=TRUE)
+}
 # initiate empty dataframes for acres of active and inactive areas for all regions and all years
 dfActive = data.frame(regions=regionNames,
                       active_2003=rep(0,35),
@@ -53,16 +62,17 @@ dfInactive = data.frame(regions=regionNames,
 
 # applying a nested-for-loop which iterates through the years and regions
 # pixel numbers for each regions are extracted, transformed to acrage
-# and written into the corresponding cell of the dataframes created before
+# and writes the data into the corresponding cell of the dataframes created before
+regVals = as.vector(na.omit(unique(values(regionRas))))
+
 for (year in years){
   r = raster(predfiles[grep(year,predfiles)])
   for (region in regionNames){
     if(region %in% namesEmpty) next
     print(region)
-    tmp = extract(r, regions[which(regions$NAME_2==region),], df=TRUE)
-    tmp = na.omit(tmp)
-    active = sum(tmp[,2]==2) * 6.25
-    inactive = sum(tmp[,2]==1) * 6.25
+    tmp = as.vector(na.omit(r[regionRas==regions$ID[regions$NAME_2==region]]))
+    active = sum(tmp==2) * 6.25
+    inactive = sum(tmp==1) * 6.25
     dfActive[which(dfActive$regions==region),paste0("active_",year)] = active
     dfInactive[which(dfInactive$regions==region),paste0("inactive_",year)] = inactive
   }
@@ -70,9 +80,7 @@ for (year in years){
 }
 
 # based on the names of the regions, the results are merged with the region shapefile
-
-
-
-
-
-writeOGR(dsn="../results/shapes/regions.shp", layer="regions", overwrite_layer=T, driver="ESRI Shapefile")
+regions@data = base::merge(regions@data,dfActive,by.x="NAME_2",by.y="regions")
+regions@data = base::merge(regions@data,dfInactive,by.x="NAME_2",by.y="regions")
+# writting file to disk
+writeOGR(regions, dsn="../results/shapes/regions.shp", layer="regions", overwrite_layer=T, driver="ESRI Shapefile")

@@ -1,6 +1,6 @@
 # script to set up a random forest model based on forward-feature selection and cross-validation
 library(rgdal)
-library(carte)
+library(caret)
 library(doParallel)
 library(CAST)
 library(splitstackshape)
@@ -35,11 +35,11 @@ stopCluster(cl)
 
 
 pred = predict(rfModel,testing)
-caret::confusionMatrix(pred,as.factor(testing$active))
+confMat = caret::confusionMatrix(pred,as.factor(testing$active))
 
 
 saveRDS(rfModel,file="../results/prediction/rfModel.rds")
-
+saveRDS(confMat,file="../results/prediction/confMat.rds")
 
 
 
