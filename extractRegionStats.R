@@ -10,6 +10,7 @@ regions = readOGR("../results/shapes/regions.shp")
 regionNames = unique(regions@data$NAME_2)
 fields = readOGR("../results/shapes/fields.shp")
 predfiles = list.files("../results/prediction/", pattern = "activitiy", full.names = T)
+abandMap = raster("../results/prediction/abandMap.tif")
 years = 2003:2016
 
 # create an index of the names of regions which do not have any agricultural areas
@@ -82,5 +83,21 @@ for (year in years){
 # based on the names of the regions, the results are merged with the region shapefile
 regions@data = base::merge(regions@data,dfActive,by.x="NAME_2",by.y="regions")
 regions@data = base::merge(regions@data,dfInactive,by.x="NAME_2",by.y="regions")
+
+
+# extract abandonment data
+abadData = data.frame(region=regions$NAME_2,active=rep(0,35),abandoned=rep(0,35))
+
+  for (region in regionNames){
+    if(region %in% namesEmpty) next
+    print(region)
+    tmp = as.vector(na.omit(abandMap[regionRas==regions$ID[regions$NAME_2==region]]))
+    active = sum(tmp==1) * 6.25
+    inactive = sum(tmp==0) * 6.25
+    abadData$active[which(abadData$region==region)] = active
+    abadData$abandoned[which(abadData$region==region)] = inactive
+  }
+
+regions@data = base::merge(regions@data,abadData,by.x="NAME_2",by.y="region")
 # writting file to disk
 writeOGR(regions, dsn="../results/shapes/regions.shp", layer="regions", overwrite_layer=T, driver="ESRI Shapefile")

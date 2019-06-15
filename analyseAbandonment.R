@@ -101,8 +101,11 @@ return_percentag = function(x){
   return(l/a)
 }
 
-# apply the focal opperation to the abandonment map
+# apply the focal opperation to the abandonment map and exclude non-agricultural pixels
 hotspot = focal(abandMap,w=cw,fun=return_percentag)
+hotspot[is.na(agrMask)] = NA
 
 # save abandonment hotspot map to disk
 writeRaster(hotspot, "../results/prediction/hotspot.tif", overwrite=TRUE)
+
+
