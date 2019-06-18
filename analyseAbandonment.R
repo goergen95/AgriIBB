@@ -1,74 +1,76 @@
 # script to analyse abandonment/fallow frequency
 library(raster)
+cores = 7
+# classification scheme for agricultural activity analysis
+
+# stable activley managed cropland: 11 to 14 years of activity
+
+# stably inactive cropland: 0 to 3 years of activity
+
+# recent abandonment within the study period: 4 to 7 years activity in 2003-2009; 0 to 3 years activity in 2010-2016
+
+# recent recultivation within the study period: 0 to 3 years activity in 2003-2009; 4 to 7 years activity in 2010-2016
 
 
-# prepare paths to predicted active/inactive raster files
+# read in needed files
 predfiles = list.files("../results/prediction/",pattern="activitiy",full.names=TRUE)
 agrMask = raster("../results/prediction/agrMask.tif")
-# read files as raster and declare function to set active pixels to 0, while inactive pixels remain 1
+# read files as raster and declare function to set active pixels to 1 and active pixels to 0
 predRas = lapply(predfiles,raster)
 maskActive = function(x){
-  x[x==2]=0 
+  x[x==1]=0 # inactive 
+  x[x==2]=1 # active
   return(x)
 }
 
 # apply previously declared function to all rasters individually
 predRas = lapply(predRas,maskActive)
-# create frequency raster layer by simply summing up the years of inactive pixels
-ffrequency = sum(stack(predRas))
-writeRaster(ffrequency,filename="../results/prediction/ffrequency.tif", overwrite=TRUE)
-# we can also create a raster indicating the years opf active uses
-# its simply the 14 years - the fallow frequency raster -  might be useful for future analysis
-afrequency = predRas[[1]]
-afrequency[] = 14
-afrequency = afrequency-ffrequency
+
+# create activity frequency raster layer by simply summing up the years of active pixels
+afrequency = sum(stack(predRas))
 writeRaster(afrequency,filename="../results/prediction/afrequency.tif", overwrite=TRUE)
+ffrequency = afrequency
+ffrequency[] = 14
+ffrequency = ffrequency - afrequency
+writeRaster(ffrequency,filename="../results/prediction/ffrequency.tif", overwrite =TRUE)
+# extraction of stabley managed cropland
+cropMap = afrequency
+cropMap[cropMap<11] = NA
+cropMap[!is.na(cropMap)] = 4 # number code for stabley managed cropland
+
+# extraction of stabley inactive cropland
+abandMap = afrequency
+abandMap[abandMap>3] = NA
+abandMap[!is.na(abandMap)] = 1 # number code for stabley inactive cropland
 
 
-# next we need to differntiate between managed and abandoned pixels
-# all pixels which are active 12 or more years are considered as active, since they 
-# only indicate maximum three fallow years
-active = afrequency
-active[active<12] = NA
-active[!is.na(active)] = 2
+# preparation of period stacks
+period0309 = sum(stack(predRas[1:7]))
+period1116 = sum(stack(predRas[8:14]))
+# setting other classes to NA
+period0309[!is.na(cropMap)] = NA
+period0309[!is.na(abandMap)] = NA
+period1116[!is.na(cropMap)] = NA
+period1116[!is.na(abandMap)] = NA
+
+# extraction of recently abandoned cropland
+recAband = period0309
+recAband[period0309<4] = NA
+recAband[period1116>3] = NA
+recAband[!is.na(recAband)]=2 # number code for recent abandonment class
+
+# extraction of recently recultivated cropland
+recRecult = period0309
+recRecult[period0309>=4] = NA
+recRecult[period1116<=3] = NA
+recRecult[!is.na(recRecult)]=3 # number code for recent recultivated class
 
 
-# secondly we define abandoned pixes which show agriculural years in between the years
-# 2011 and 2016 in only two years - and vice-versa extract all pixels which 
-# are to be considered active in the same period
+Map = sum(stack(cropMap,abandMap,recAband,recRecult),na.rm = TRUE)
+Map[Map==0] = NA
+writeRaster(Map,"../results/prediction/abandonmentMap.tif",overwrite = TRUE)
 
-# exclusion of all active pixels due to higher level criteria
-period1116 = sum(stack(predRas[9:14]))
-period1116[active==2] = NA
-
-# extraction of all pixels with more than 2 active years in the period 2011-2016
-active1116 = period1116
-active1116[active1116>2] = NA
-active1116[!is.na(active1116)]=2
-
-# extraction of all abandoned pixels in the period 2011-2016
-inactive1116 = period1116
-inactive1116[active==2] = NA
-inactive1116[active1116==2] = NA
-inactive1116[!is.na(inactive1116)]= 1
-
-# create combinated map
-abandMap = stack(active,active1116,inactive1116)
-abandMap = sum(abandMap,na.rm=TRUE)
-
-
-# reclassify to more conveniant values: 0 = abandoned, 1 = active, NA = NA
-abandMap[abandMap==0] = NA
-abandMap[abandMap==1] = 0
-abandMap[abandMap==2] = 1
-
-# write file to disk
-writeRaster(abandMap,filename="../results/prediction/abandMap.tif", overwrite=TRUE)
-
-
-# calculation of fallow percentage in a 2.5km radius environment for each raster cell
-# we use a circular search window 
-
+# hotspot map of abandoned cropland
 #function to make a circular weights matrix of given radius and resolution
 #NB radius must me an even multiple of res!
 make_circ_filter<-function(radius, res){
@@ -88,24 +90,36 @@ make_circ_filter<-function(radius, res){
   out<-sweeper(circ_filter)
   return(out)
 }
-
-# create circular moving window matrix
-cw = make_circ_filter(res(abandMap)[1]*10,res(abandMap)[1]) 
-
-
-# declare function which calculates percentage of abandoned pixels in a matrix
+cw = make_circ_filter(res(Map)[1]*10,res(Map)[1]) 
+# declare function which calculates percentage of abandoned pixels (class 1 and 2) in a matrix
 return_percentag = function(x){
   x = na.omit(x)
-  l = sum(x==0)
+  l = sum(x==1 | x==2)
   a = sum(!is.na(x))
   return(l/a)
 }
 
+
 # apply the focal opperation to the abandonment map and exclude non-agricultural pixels
-hotspot = focal(abandMap,w=cw,fun=return_percentag)
-hotspot[is.na(agrMask)] = NA
-
+beginCluster(cores)
+hotspotAband = focal(Map,w=cw,fun=return_percentag)
+endCluster()
+hotspotAband[is.na(agrMask)] = NA
 # save abandonment hotspot map to disk
-writeRaster(hotspot, "../results/prediction/hotspot.tif", overwrite=TRUE)
+writeRaster(hotspotAband, "../results/prediction/hotspotAband.tif", overwrite=TRUE)
 
 
+return_percentag = function(x){
+  x = na.omit(x)
+  l = sum(x==3)
+  a = sum(!is.na(x))
+  return(l/a)
+}
+
+
+# apply the focal opperation to the abandonment map and exclude non-agricultural pixels
+beginCluster(cores)
+hotspotRecult = focal(Map,w=cw,fun=return_percentag)
+endCluster()
+hotspotRecult[is.na(agrMask)] = NA
+writeRaster(hotspotRecult,filename="../results/prediction/hotspotRecult.tif",overwrite=TRUE)

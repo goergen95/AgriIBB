@@ -3,14 +3,14 @@
 library(raster)
 library(rgdal)
 library(rgeos)
-
+cores=7
 # read in all files needed for the analysis
 
 regions = readOGR("../results/shapes/regions.shp")
 regionNames = unique(regions@data$NAME_2)
 fields = readOGR("../results/shapes/fields.shp")
 predfiles = list.files("../results/prediction/", pattern = "activitiy", full.names = T)
-abandMap = raster("../results/prediction/abandMap.tif")
+abandMap = raster("../results/prediction/abandonmentMap.tif")
 years = 2003:2016
 
 # create an index of the names of regions which do not have any agricultural areas
@@ -18,6 +18,7 @@ years = 2003:2016
 content = gContains(regions,fields,byid=TRUE)
 indexEmpty = as.vector(which(colSums(content)==0))
 namesEmpty = regionNames[indexEmpty]
+
 if (file.exists("../results/prediction/regionRas.tif")){
   print("Using existing region raster. Make sure to delete regionRas.tif for new calculation.")
   regionRas = raster("../results/prediction/regionRas.tif")
@@ -25,6 +26,7 @@ if (file.exists("../results/prediction/regionRas.tif")){
 r = raster(predfiles[1])
 r[] = NA
 regions$ID = 1:length(regions)
+beginCluster(cores)
 regionRas = rasterize(regions,r, regions$ID)
 writeRaster(regionRas,filename="../results/prediction/regionRas.tif", overwrite=T)
 writeOGR(regions,dsn="../results/shapes/regions.shp",driver="ESRI Shapefile",layer="regions",overwrite_layer=TRUE)
@@ -86,16 +88,20 @@ regions@data = base::merge(regions@data,dfInactive,by.x="NAME_2",by.y="regions")
 
 
 # extract abandonment data
-abadData = data.frame(region=regions$NAME_2,active=rep(0,35),abandoned=rep(0,35))
+abadData = data.frame(region=regions$NAME_2,abandoned=rep(0,35),recAbd=rep(0,35),recRecult=rep(0,35),cropland=rep(0,35))
 
   for (region in regionNames){
     if(region %in% namesEmpty) next
     print(region)
     tmp = as.vector(na.omit(abandMap[regionRas==regions$ID[regions$NAME_2==region]]))
-    active = sum(tmp==1) * 6.25
-    inactive = sum(tmp==0) * 6.25
-    abadData$active[which(abadData$region==region)] = active
-    abadData$abandoned[which(abadData$region==region)] = inactive
+    aband = sum(tmp==1) * 6.25
+    recAband = sum(tmp==2) * 6.25
+    recRecu = sum(tmp==3) * 6.25
+    cropLand = sum(tmp==4) * 6.25
+    abadData$abandoned[which(abadData$region==region)] = aband
+    abadData$recAbd[which(abadData$region==region)] = recAband
+    abadData$recRecult[which(abadData$region==region)] = recRecu
+    abadData$cropland[which(abadData$region==region)] = cropLand
   }
 
 regions@data = base::merge(regions@data,abadData,by.x="NAME_2",by.y="region")

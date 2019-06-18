@@ -1,8 +1,6 @@
 library(rgdal)
 library(ggplot2)
 
-
-
 regions = readOGR("../results/shapes/regions.shp")
 points = readOGR("../results/shapes/random_points.shp")
 
@@ -78,3 +76,11 @@ inactive_pixels = ggplot(data=data)+
 png("../results/plots/inactive_pixels.png",1800,900)
 inactive_pixels
 dev.off()
+
+
+prec = na.omit(regions@data[,c(1,19:32)])
+active = na.omit(regions@data[,c(1,34:47)])
+prec = prec[-which(active$ac_2003==0),]
+active=active[-which(active$ac_2003==0),]
+plot(prec,active)
+

@@ -8,8 +8,8 @@ library(ggplot2)
 # read in needed files
 regions = readOGR("../results/shapes/regions.shp")
 years=2003:2016
-tmpNames = paste("tmp",years,sep="")
-prcNames = paste("prc",years,sep="")
+tmpNames = paste("temp",years,sep="")
+prcNames = paste("prec",years,sep="")
 activeNames = paste("ac_",years,sep="")
 inactiveNames=paste("in_",years,sep="")
 fields = readOGR("../results/shapes/fields.shp")
@@ -25,14 +25,13 @@ regionNames = unique(regions@data$NAME_2)
 resultsPREC = data.frame(region=regions@data$NAME_2,variable=rep("prec",35),coef=rep(0,35),rsquared=rep(0,35),pvalue=rep(0,35))
 for (region in regionNames){
   if(region %in% namesEmpty) next
-  if( region == "Semipalatinskiy") next
   print(region)
   mod = lm(as.numeric(regions@data[regions$NAME_2==region,activeNames]) ~ as.numeric(regions@data[regions$NAME_2==region,prcNames]))
   s = summary(mod)
   coef = s$coefficients[2,1]
   rsquared = round(s$r.squared,3)
   pvalue = s$coefficients[2,4]
-  resultsPREC[results$region==region,3:5] = c(coef,rsquared,pvalue)
+  resultsPREC[resultsPREC$region==region,3:5] = c(coef,rsquared,pvalue)
   
 }
 resultsPREC = na.omit(resultsPREC)
@@ -41,14 +40,13 @@ resultsPREC = resultsPREC[-which(resultsTMP$coef==0),]
 resultsTMP = data.frame(region=regions@data$NAME_2,variable=rep("temp",35),coef=rep(0,35),rsquared=rep(0,35),pvalue=rep(0,35))
 for (region in regionNames){
   if(region %in% namesEmpty) next
-  if( region == "Semipalatinskiy") next
   print(region)
   mod = lm(as.numeric(regions@data[regions$NAME_2==region,activeNames]) ~ as.numeric(regions@data[regions$NAME_2==region,tmpNames]))
   s = summary(mod)
   coef = s$coefficients[2,1]
   rsquared = round(s$r.squared,3)
   pvalue = s$coefficients[2,4]
-  resultsTMP[results$region==region,3:5] = c(coef,rsquared,pvalue)
+  resultsTMP[resultsTMP$region==region,3:5] = c(coef,rsquared,pvalue)
   
 }
 
