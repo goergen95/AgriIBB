@@ -3,7 +3,8 @@ library(ggplot2)
 
 regions = readOGR("../results/shapes/regions.shp")
 points = readOGR("../results/shapes/random_points.shp")
-
+NDVI = stack(list.files("../results/savG/layered/",pattern="2016",full.names = T))
+map2016 = raster("../results/prediction/activitiy_2016.tif")
 
 chn = colSums(regions@data[regions$ISO=="CHN",34:47])
 kaz = colSums(regions@data[regions$ISO=="KAZ",34:47])
@@ -45,18 +46,27 @@ climatePlot
 dev.off()
 
 
-active = colMeans(points@data[points$active==1,4:26])
-inactive = colMeans(points@data[points$active==0,4:26])
+active = map2016
+active[active==1] = NA
+inactive = map2016
+inactive[inactive==2] = NA
+inactive[!is.na(inactive)] = 1
 
-data =  as.data.frame(t(rbind(active,inactive)))
-data$SDactive = as.vector(apply(points@data[points$active==1,4:26],2,sd,na.rm=TRUE))
-data$SDinactive = as.vector(apply(points@data[points$active==0,4:26],2,sd,na.rm=TRUE))
+activeNDVI = NDVI[active]
+inactiveNDVI = NDVI[inactive]
+
+activeMeans = colMeans(points@data[points$active==1,4:26])
+inactiveMeans = colMeans(points@data[points$active==0,4:26])
+
+data =  as.data.frame(t(rbind(activeMeans,inactiveMeans)))
+data$SDactive = as.vector(apply(activeNDVI,2,sd,na.rm=TRUE))
+data$SDinactive = as.vector(apply(inactiveNDVI,2,sd,na.rm=TRUE))
 data$DOY = seq(001,353,16)
 
 active_pixels = ggplot(data=data)+
-  geom_line(aes(x=DOY,y=active/10000,group=1),color="olivedrab3",size=1.4)+
-  geom_line(aes(x=DOY,y=(active+SDactive)/10000,group=1),linetype=2,color="olivedrab3",size=1.5)+
-  geom_line(aes(x=DOY,y=(active-SDactive)/10000,group=1),linetype=2,color="olivedrab3",size=1.5)+
+  geom_line(aes(x=DOY,y=activeMeans/10000,group=1),color="olivedrab3",size=1.4)+
+  geom_line(aes(x=DOY,y=(activeMeans+SDactive)/10000,group=1),linetype=2,color="olivedrab3",size=1.5)+
+  geom_line(aes(x=DOY,y=(activeMeans-SDactive)/10000,group=1),linetype=2,color="olivedrab3",size=1.5)+
   labs(y="NDVI value",x="Day of the year 2016")+
   theme_minimal(base_size = 18)+
   ylim(0,1)
@@ -66,9 +76,9 @@ active_pixels
 dev.off()
 
 inactive_pixels = ggplot(data=data)+
-  geom_line(aes(x=DOY,y=inactive/10000,group=1),color="indianred4",size=1.4)+
-  geom_line(aes(x=DOY,y=(inactive+SDactive)/10000,group=1),linetype=2,color="indianred4",size=1.5)+
-  geom_line(aes(x=DOY,y=(inactive-SDactive)/10000,group=1),linetype=2,color="indianred4",size=1.5)+
+  geom_line(aes(x=DOY,y=inactiveMeans/10000,group=1),color="indianred4",size=1.4)+
+  geom_line(aes(x=DOY,y=(inactiveMeans+SDactive)/10000,group=1),linetype=2,color="indianred4",size=1.5)+
+  geom_line(aes(x=DOY,y=(inactiveMeans-SDactive)/10000,group=1),linetype=2,color="indianred4",size=1.5)+
   labs(y="NDVI value",x="Day of the year 2016")+
   theme_minimal(base_size = 18)+
   ylim(0,1)

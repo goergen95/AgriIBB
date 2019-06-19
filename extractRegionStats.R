@@ -7,17 +7,18 @@ cores=7
 # read in all files needed for the analysis
 
 regions = readOGR("../results/shapes/regions.shp")
-regionNames = unique(regions@data$NAME_2)
+names(regions)[which(names(regions) == "NAME_2")] = "regions"
+regionNames = unique(regions@data$regions)
 fields = readOGR("../results/shapes/fields.shp")
 predfiles = list.files("../results/prediction/", pattern = "activitiy", full.names = T)
 abandMap = raster("../results/prediction/abandonmentMap.tif")
+points = readOGR("../results/shapes/random_points.shp")
 years = 2003:2016
 
 # create an index of the names of regions which do not have any agricultural areas
 # this saves a lot of unecessary comuputation time when pixel values are extracted
-content = gContains(regions,fields,byid=TRUE)
-indexEmpty = as.vector(which(colSums(content)==0))
-namesEmpty = regionNames[indexEmpty]
+namesEmpty = regions$regions[regions$cropArea==0]
+
 
 if (file.exists("../results/prediction/regionRas.tif")){
   print("Using existing region raster. Make sure to delete regionRas.tif for new calculation.")
@@ -73,7 +74,7 @@ for (year in years){
   for (region in regionNames){
     if(region %in% namesEmpty) next
     print(region)
-    tmp = as.vector(na.omit(r[regionRas==regions$ID[regions$NAME_2==region]]))
+    tmp = as.vector(na.omit(r[regionRas==regions$ID[regions$regions==region]]))
     active = sum(tmp==2) * 6.25
     inactive = sum(tmp==1) * 6.25
     dfActive[which(dfActive$regions==region),paste0("active_",year)] = active
@@ -83,17 +84,16 @@ for (year in years){
 }
 
 # based on the names of the regions, the results are merged with the region shapefile
-regions@data = base::merge(regions@data,dfActive,by.x="NAME_2",by.y="regions")
-regions@data = base::merge(regions@data,dfInactive,by.x="NAME_2",by.y="regions")
-
+regions= sp::merge(regions,dfActive)
+regions= sp::merge(regions,dfInactive)
 
 # extract abandonment data
-abadData = data.frame(region=regions$NAME_2,abandoned=rep(0,35),recAbd=rep(0,35),recRecult=rep(0,35),cropland=rep(0,35))
+abadData = data.frame(regions=regions$regions,abandoned=rep(0,35),recAbd=rep(0,35),recRecult=rep(0,35),cropland=rep(0,35))
 
   for (region in regionNames){
     if(region %in% namesEmpty) next
     print(region)
-    tmp = as.vector(na.omit(abandMap[regionRas==regions$ID[regions$NAME_2==region]]))
+    tmp = as.vector(na.omit(abandMap[regionRas==regions$ID[regions$regions==region]]))
     aband = sum(tmp==1) * 6.25
     recAband = sum(tmp==2) * 6.25
     recRecu = sum(tmp==3) * 6.25
@@ -104,6 +104,22 @@ abadData = data.frame(region=regions$NAME_2,abandoned=rep(0,35),recAbd=rep(0,35)
     abadData$cropland[which(abadData$region==region)] = cropLand
   }
 
-regions@data = base::merge(regions@data,abadData,by.x="NAME_2",by.y="region")
+regions= sp::merge(regions,abadData)
+
+content = gContains(regions,points,byid=TRUE)
+index = as.numeric(apply(content,1, function(x) which(x==TRUE)))
+points$region = regions$regions[index]
+
+for (region in unique(points$region)){
+  nActive = sum(points$active[points$region==region]==1)
+  nInactive = sum(points$active[points$region==region]==0)
+  regions$nActive[regions$regions==region] = nActive
+  regions$nInactive[regions$regions==region] = nInactive
+}
+
+areaInfo = regions@data[,c("regions","ISO","ID","area","cropAre","nActive","nInactv","abandnd","recAbd","recRclt","croplnd")]
+areaInfo = areaInfo[-which(areaInfo$cropAre==0),]
+write.csv(areaInfo,"../results/regionAreas.csv")
+
 # writting file to disk
 writeOGR(regions, dsn="../results/shapes/regions.shp", layer="regions", overwrite_layer=T, driver="ESRI Shapefile")

@@ -8,25 +8,22 @@ library(ggplot2)
 # read in needed files
 regions = readOGR("../results/shapes/regions.shp")
 years=2003:2016
-tmpNames = paste("temp",years,sep="")
-prcNames = paste("prec",years,sep="")
+tmpNames = paste("tmp",years,sep="")
+prcNames = paste("prc",years,sep="")
 activeNames = paste("ac_",years,sep="")
 inactiveNames=paste("in_",years,sep="")
 fields = readOGR("../results/shapes/fields.shp")
 
 
-content = gContains(regions,fields,byid=TRUE)
-indexEmpty = as.vector(which(colSums(content)==0))
-namesEmpty = regionNames[indexEmpty]
-
-regionNames = unique(regions@data$NAME_2)
+namesEmpty = regions$regions[regions$cropAre==0]
+regionNames = unique(regions@data$regions)
 
 
-resultsPREC = data.frame(region=regions@data$NAME_2,variable=rep("prec",35),coef=rep(0,35),rsquared=rep(0,35),pvalue=rep(0,35))
+resultsPREC = data.frame(region=regions@data$regions,variable=rep("prec",35),coef=rep(0,35),rsquared=rep(0,35),pvalue=rep(0,35))
 for (region in regionNames){
   if(region %in% namesEmpty) next
   print(region)
-  mod = lm(as.numeric(regions@data[regions$NAME_2==region,activeNames]) ~ as.numeric(regions@data[regions$NAME_2==region,prcNames]))
+  mod = lm(as.numeric(regions@data[regions$regions==region,activeNames]) ~ as.numeric(regions@data[regions$regions==region,prcNames]))
   s = summary(mod)
   coef = s$coefficients[2,1]
   rsquared = round(s$r.squared,3)
@@ -37,11 +34,11 @@ for (region in regionNames){
 resultsPREC = na.omit(resultsPREC)
 resultsPREC = resultsPREC[-which(resultsTMP$coef==0),]
 
-resultsTMP = data.frame(region=regions@data$NAME_2,variable=rep("temp",35),coef=rep(0,35),rsquared=rep(0,35),pvalue=rep(0,35))
+resultsTMP = data.frame(region=regions@data$regions,variable=rep("temp",35),coef=rep(0,35),rsquared=rep(0,35),pvalue=rep(0,35))
 for (region in regionNames){
   if(region %in% namesEmpty) next
   print(region)
-  mod = lm(as.numeric(regions@data[regions$NAME_2==region,activeNames]) ~ as.numeric(regions@data[regions$NAME_2==region,tmpNames]))
+  mod = lm(as.numeric(regions@data[regions$regions==region,activeNames]) ~ as.numeric(regions@data[regions$regions==region,tmpNames]))
   s = summary(mod)
   coef = s$coefficients[2,1]
   rsquared = round(s$r.squared,3)
@@ -97,5 +94,6 @@ global$rsquared[6]= round(s$r.squared,3)
 global$pvalue[6]= s$coefficients[2,4]
 
 results = rbind(global,resultsPREC,resultTMP)
+results = results[-which(results$coef==0),]
 write.csv(results,file="../results/regression/stats_results.csv")
 
