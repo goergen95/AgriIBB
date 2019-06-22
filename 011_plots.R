@@ -1,4 +1,5 @@
 library(rgdal)
+library(raster)
 library(ggplot2)
 
 regions = readOGR("../results/shapes/regions.shp")
@@ -21,9 +22,10 @@ active = ggplot(data=data)+
   geom_errorbar(aes(x=dates,ymin=(kaz-146925)/1000, ymax=(kaz+146925)/1000), width=.2, color="blue")+
   labs(y="active area (in 1000 acres)",
          x="year")+
-  theme_minimal(base_size = 18)
+  theme_minimal(base_size = 18)+
+  theme(text = element_text(size=25),axis.text.x=element_text(angle=45))
 
-png("../results/plots/activity_plot.png",width=1800,height=900,res=100)
+png("../results/plots/activity_plot.png",width=1800,height=680,res=100)
 active
 dev.off()
 
@@ -64,26 +66,28 @@ data$SDinactive = as.vector(apply(inactiveNDVI,2,sd,na.rm=TRUE))
 data$DOY = seq(001,353,16)
 
 active_pixels = ggplot(data=data)+
-  geom_line(aes(x=DOY,y=activeMeans/10000,group=1),color="olivedrab3",size=1.4)+
-  geom_line(aes(x=DOY,y=(activeMeans+SDactive)/10000,group=1),linetype=2,color="olivedrab3",size=1.5)+
-  geom_line(aes(x=DOY,y=(activeMeans-SDactive)/10000,group=1),linetype=2,color="olivedrab3",size=1.5)+
+  geom_line(aes(x=DOY,y=activeMeans/10000,group=1),color="olivedrab3",size=2.5)+
+  geom_line(aes(x=DOY,y=(activeMeans+SDactive)/10000,group=1),linetype=2,color="olivedrab3",size=2.5)+
+  geom_line(aes(x=DOY,y=(activeMeans-SDactive)/10000,group=1),linetype=2,color="olivedrab3",size=2.5)+
   labs(y="NDVI value",x="Day of the year 2016")+
   theme_minimal(base_size = 18)+
-  ylim(0,1)
+  ylim(0,1)+
+  theme(text = element_text(size=25),axis.text.x=element_text(angle=45))
 
-png("../results/plots/active_pixels.png",1800,900)
+png("../results/plots/active_pixels.png",1000,720)
 active_pixels
 dev.off()
 
 inactive_pixels = ggplot(data=data)+
-  geom_line(aes(x=DOY,y=inactiveMeans/10000,group=1),color="indianred4",size=1.4)+
-  geom_line(aes(x=DOY,y=(inactiveMeans+SDactive)/10000,group=1),linetype=2,color="indianred4",size=1.5)+
-  geom_line(aes(x=DOY,y=(inactiveMeans-SDactive)/10000,group=1),linetype=2,color="indianred4",size=1.5)+
+  geom_line(aes(x=DOY,y=inactiveMeans/10000,group=1),color="indianred4",size=2.5)+
+  geom_line(aes(x=DOY,y=(inactiveMeans+SDactive)/10000,group=1),linetype=2,color="indianred4",size=2.5)+
+  geom_line(aes(x=DOY,y=(inactiveMeans-SDactive)/10000,group=1),linetype=2,color="indianred4",size=2.5)+
   labs(y="NDVI value",x="Day of the year 2016")+
   theme_minimal(base_size = 18)+
-  ylim(0,1)
+  ylim(0,1)+
+  theme(text = element_text(size=25),axis.text.x=element_text(angle=45))
 
-png("../results/plots/inactive_pixels.png",1800,900)
+png("../results/plots/inactive_pixels.png",1000,720)
 inactive_pixels
 dev.off()
 

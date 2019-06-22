@@ -4,6 +4,7 @@ library(caret)
 library(doParallel)
 library(CAST)
 library(splitstackshape)
+library(pROC)
 # specifiy number of cores for parallell processing
 cores = 7
 
@@ -41,5 +42,12 @@ confMat = caret::confusionMatrix(pred,as.factor(testing$active))
 saveRDS(rfModel,file="../results/prediction/rfModel.rds")
 saveRDS(confMat,file="../results/prediction/confMat.rds")
 
+# roc and auc
+pred = as.character(pred)
+pred[pred=="X0"] = 0
+pred[pred=="X1"] = 1
+pred = as.numeric(pred)
 
+
+ROC = roc(testing$active,pred,auc=TRUE)
 
