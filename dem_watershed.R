@@ -6,7 +6,7 @@ library(link2GI)
 
 
 # prepare saga comand line interface
-if (length(list.files(path = path_morph_env, pattern = "saga"))==0){
+if (!file.exists("../run/saga.rds")){
   saga = linkSAGA(ver_select = T)
   save(saga, file="../run/saga.rds")
 }else{
@@ -49,13 +49,11 @@ writeRaster(facc,filename="../results/dem/faccumulation1.tif", options="COMPRESS
 system(paste0(saga$sagaCmd," ta_channels 0",
               " -ELEVATION ../run/dem_filled.sgrd",
               " -SINKROUTE ../run/dem_fdir.sgrd",
-              " -INIT_GRID ../run/flowacc.sgrd"
+              " -INIT_GRID ../run/flowacc.sgrd",
               " -CHNLNTWRK ../run/channetwork.sgrd",
               " -CHNLROUTE ../run/chanroute.sgrd",
-              " -SHAPES ../run/chanels.shp"
-              " -INIT_VALUE "
-              " -VAL_MEAN ../run/meancath.sgrd",
-              " -METHOD 0",
+              " -SHAPES ../run/chanels.shp",
+              #" -INIT_VALUE ",,
               " -MINLEN 5000"))
 
 

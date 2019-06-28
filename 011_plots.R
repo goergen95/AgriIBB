@@ -16,21 +16,25 @@ data$dates = 2003:2016
 
 
 active = ggplot(data=data)+
-  geom_line(aes(x=dates, y=chn/1000), color="red",size=1.4)+
-  geom_line(aes(x=dates, y=kaz/1000), color="blue",size=1.4)+
+  geom_line(aes(x=dates, y=chn/1000,color="China"), size=1.4)+
+  geom_line(aes(x=dates, y=kaz/1000, color="Kazakhstan"),size=1.4)+
   geom_errorbar(aes(x=dates,ymin=(chn-146925)/1000, ymax=(chn+146925)/1000), width=.2, color="red")+
   geom_errorbar(aes(x=dates,ymin=(kaz-146925)/1000, ymax=(kaz+146925)/1000), width=.2, color="blue")+
-  labs(y="active area (in 1000 acres)",
-         x="year")+
   theme_minimal(base_size = 18)+
-  theme(text = element_text(size=25),axis.text.x=element_text(angle=45))
+  theme(text = element_text(size=25),axis.text.x=element_text(angle=45))+
+  scale_color_manual(values=c(
+    "China" = "red",
+    "Kazakhstan" = "blue"
+  ))+  
+  labs(y="active area (in 1000 hectares)",
+            x="year", color = "Countries")
 
 png("../results/plots/activity_plot.png",width=1800,height=680,res=100)
 active
 dev.off()
 
-temp = colMeans(regions@data[,5:18],na.rm=TRUE)
-prec = colMeans(regions@data[,19:32],na.rm=TRUE)
+temp = colMeans(regions@data[,6:19],na.rm=TRUE)
+prec = colMeans(regions@data[,20:33],na.rm=TRUE)
 climate = as.data.frame(t(rbind(temp,prec)))
 climate$year = 2003:2016
 
@@ -41,7 +45,9 @@ climatePlot = ggplot(data=climate)+
   scale_y_continuous(sec.axis = sec_axis(~./80, name = "Temperature (°C)"))+
   labs(y = "Percipitation Sums (mm)",
        x = "year")+
-  theme_minimal(base_size = 18)
+  theme_minimal(base_size = 26)+
+  theme(legend.title = element_text("Temperature"))
+climatePlot
 
 png("../results/plots/climate.png",width=1800,height=900,res=100)
 climatePlot
@@ -72,7 +78,8 @@ active_pixels = ggplot(data=data)+
   labs(y="NDVI value",x="Day of the year 2016")+
   theme_minimal(base_size = 18)+
   ylim(0,1)+
-  theme(text = element_text(size=25),axis.text.x=element_text(angle=45))
+  theme(text = element_text(size=26),axis.text.x=element_text(angle=45))+
+  geom_text(x = 360, y=1,label="B)",size=9)
 
 png("../results/plots/active_pixels.png",1000,720)
 active_pixels
@@ -85,7 +92,8 @@ inactive_pixels = ggplot(data=data)+
   labs(y="NDVI value",x="Day of the year 2016")+
   theme_minimal(base_size = 18)+
   ylim(0,1)+
-  theme(text = element_text(size=25),axis.text.x=element_text(angle=45))
+  theme(text = element_text(size=26),axis.text.x=element_text(angle=45))+
+  geom_text(x = 360, y=1,label="A)",size=9)
 
 png("../results/plots/inactive_pixels.png",1000,720)
 inactive_pixels
