@@ -29,9 +29,8 @@ active = ggplot(data=data)+
   labs(y="active area (in 1000 hectares)",
             x="year", color = "Countries")
 
-png("../results/plots/activity_plot.png",width=1800,height=680,res=100)
-active
-dev.off()
+ggsave(plot=active,file="../results/plots/activity_plot.eps",dpi=600,device="eps",units="cm",width=40,height=20)
+
 
 temp = colMeans(regions@data[,6:19],na.rm=TRUE)
 prec = colMeans(regions@data[,20:33],na.rm=TRUE)
@@ -47,11 +46,9 @@ climatePlot = ggplot(data=climate)+
        x = "year")+
   theme_minimal(base_size = 26)+
   theme(legend.title = element_text("Temperature"))
-climatePlot
 
-png("../results/plots/climate.png",width=1800,height=900,res=100)
-climatePlot
-dev.off()
+ggsave(plot=climatePlot,file="../results/plots/climate.eps",dpi=600,device="eps",units="cm",width=40,height=20)
+
 
 
 active = map2016
@@ -81,9 +78,8 @@ active_pixels = ggplot(data=data)+
   theme(text = element_text(size=26),axis.text.x=element_text(angle=45))+
   geom_text(x = 360, y=1,label="B)",size=9)
 
-png("../results/plots/active_pixels.png",1000,720)
-active_pixels
-dev.off()
+ggsave(plot=active_pixels,file="../results/plots/active_pixels.eps",dpi=600,device="eps",units="cm",width=20,height=20)
+
 
 inactive_pixels = ggplot(data=data)+
   geom_line(aes(x=DOY,y=inactiveMeans/10000,group=1),color="indianred4",size=2.5)+
@@ -95,9 +91,10 @@ inactive_pixels = ggplot(data=data)+
   theme(text = element_text(size=26),axis.text.x=element_text(angle=45))+
   geom_text(x = 360, y=1,label="A)",size=9)
 
-png("../results/plots/inactive_pixels.png",1000,720)
-inactive_pixels
-dev.off()
+ggsave(plot=inactive_pixels,file="../results/plots/inactive_pixels.eps",dpi=600,device="eps",units="cm",width=20,height=20)
+
+
+
 
 
 prec = na.omit(regions@data[,c(1,19:32)])
